@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>防火防盗防一昂</title>
+    <link rel="stylesheet" type="text/css" href="./css/main.css">
+    <style>
+
+    </style>
+</head>
+<body>
+    <div class="buttons">
+        <button id="endButton">结束抽奖</button>
+        <button id="resetButton">重新抽奖</button>
+        <div style="display: flex">
+            <button id="randomButton">随机抽奖</button>
+            <button id="finishRandomButton" style="background-color: orangered">停</button>
+        </div>
+        <button id="enableVideo" class="disabled-video">启用动画</button>
+    </div>
+    <div class="container" id="cardContainer">
+        <!-- Cards will be dynamically generated here -->
+    </div>
+
+    <div class="overlay" id="overlay"></div>
+
+    <div class="modal" id="resultsModal">
+        <h3>中奖名单</h3>
+        <div id="winnerList"></div>
+        <button id="closeModal">恭喜这几个b</button>
+    </div>
+
+    <div class="modal" id="boomModal">
+        <h3>Boom！你抽到了退坑玩家！</h3>
+        <div id="boomNumber"></div>
+        <button id="boomCloseModal">重新抽奖</button>
+    </div>
+
+    <div class="modal-card" id="winnerModal">
+        <div class="winner-card">
+            <span>
+                <div id="winnerCardIndex"></div>
+                <div id="winnerCardName"></div>
+            </span>
+        </div>
+    </div>
+
+    <div class="footer">最终解释权由沧海月明小精灵帮会所有</div>
+
+    <video id="winnerVideo" class="winner-video">
+        <source src="./video/wish-single.mp4" type="video/mp4">
+    </video>
+    <button id="skipButton" class="skip-button">跳过</button>
+
+    <script src="js/data.js"></script>
+    <script>
+        const candidateArrCopy = candidateArr.map((item, index) => {
+            return {...item, index: index + 1}
+        })
+        // const candidates = Array.from({ length: 86 }, (_, i) => i + 1); // Use only numbers as candidates
+
+        const boomNumbers = [
+  11,
+  19,
+  20,
+  21,
+  25,
+  26,
+  27,
+  33,
+  34,
+  37,
+  39,
+  41,
+  47,
+  48,
+  52,
+  59,
+  63,
+  72,
+  74,
+  80
+]; // Example boom numbers, can be set dynamically
+
+        const generateUniqueColors = (num) => {
+            const colors = new Set();
+            while (colors.size < num) {
+                const color = `rgba(${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)}, 0.5)`;
+                colors.add(color);
+            }
+            return Array.from(colors);
+        };
+
+        let colors, shuffledCandidates;
+        let currentClickCard;
+
+        const resetState = () => {
+            colors = generateUniqueColors(candidateArrCopy.length);
+            shuffledCandidates = shuffleArray(candidateArrCopy);
+            console.log(shuffledCandidates)
+        };
+
+        const shuffleArray = (array) => {
+            let newArray = array.slice();
+            let currentIndex = newArray.length,  randomIndex;
+
+            while (currentIndex !== 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+
+                [newArray[currentIndex], newArray[randomIndex]] = [
+                    newArray[randomIndex], newArray[currentIndex]];
+            }
+
+            return newArray;
+        }
+
+        const container = document.getElementById('cardContainer');
+        const resultsModal = document.getElementById('resultsModal');
+        const boomModal = document.getElementById('boomModal');
+        const winnerModal = document.getElementById('winnerModal');
+        const overlay = document.getElementById('overlay');
+        const winnerListDiv = document.getElementById('winnerList');
+        const boomNumberDiv = document.getElementById('boomNumber');
+        let flippedCards = [];
+
+        const generateCards = () => {
+            container.innerHTML = '';
+            flippedCards = [];
+            shuffledCandidates.forEach((candidate, index) => {
+                const card = document.createElement('div');
+                card.classList.add('card');
+                card.setAttribute('id', `card${candidate.index}`)
+
+                const cardInner = document.createElement('div');
+                cardInner.classList.add('card-inner');
+
+                const front = document.createElement('span');
+                front.classList.add('front');
+                front.style.backgroundColor = colors[index];
+
+                const back = document.createElement('span');
+                back.classList.add('back');
+
+                const backIndex = document.createElement('div');
+                backIndex.textContent = candidate.index;
+                back.appendChild(backIndex);
+
+                const backName = document.createElement('div');
+                backName.classList.add('nickname');
+                backName.textContent = candidate.name;
+                back.appendChild(backName);
+
+                // back.textContent = candidate.index;
+
+                cardInner.appendChild(front);
+                cardInner.appendChild(back);
+                card.appendChild(cardInner);
+                container.appendChild(card);
+
+                card.addEventListener('click', () => {
+                    if (card.classList.contains('flipped')) {
+                        card.classList.remove('flipped');
+                        flippedCards = flippedCards.filter(flipped => flipped.index !== candidate.index);
+                    } else {
+                        const isEnabledVideo = getEnabledVideo();
+                        if(isEnabledVideo){
+                            currentClickCard = candidate;
+                            playWinnerVideo();
+                        }
+                        card.classList.add('flipped');
+                        flippedCards.push(candidate);
+                        if (boomNumbers.includes(candidate.index)) {
+                            showBoom(candidate);
+                        }
+                    }
+                });
+            });
+        };
+
+        const playWinnerVideo = () => {
+            const video = document.getElementById('winnerVideo');
+            const skipButton = document.getElementById('skipButton');
+
+            video.style.display = 'block';
+            skipButton.style.display = 'block';
+
+            video.play();
+            video.addEventListener('ended', () => {
+                video.style.display = 'none';
+                skipButton.style.display = 'none';
+
+                showWinnerModal(currentClickCard)
+            });
+        };
+
+        const showWinnerModal = (candidate) => {
+            const winnerCardIndex = document.getElementById('winnerCardIndex');
+            winnerCardIndex.textContent = candidate.index;
+            const winnerCardName = document.getElementById('winnerCardName');
+            winnerCardName.textContent = candidate.name;
+            winnerModal.style.display = 'block';
+            overlay.style.display = 'block';
+        };
+        winnerModal.addEventListener('click', function() {
+            winnerModal.style.display = 'none';
+            overlay.style.display = 'none';
+        })
+
+        document.getElementById('skipButton').addEventListener('click', function() {
+            const video = document.getElementById('winnerVideo');
+            const skipButton = document.getElementById('skipButton');
+
+            // 隐藏视频并暂停播放
+            video.pause();
+            video.currentTime = 0; // 将当前时间设置为0
+            video.load(); // 重置视频到初始状态
+            video.style.display = 'none';
+            skipButton.style.display = 'none'; // 隐藏关闭按钮
+
+            showWinnerModal(currentClickCard);
+        });
+
+        document.getElementById('enableVideo').addEventListener('click', function () {
+            const enableVideoBtn = document.getElementById('enableVideo');
+            const classList = enableVideoBtn.classList;
+            const enabled = classList.contains('enabled-video');
+            if(enabled){
+                classList.remove('enabled-video');
+                classList.add('disabled-video');
+            }else {
+                classList.remove('disabled-video');
+                classList.add('enabled-video');
+            }
+        })
+
+        const getEnabledVideo = () => {
+            const enableVideoBtn = document.getElementById('enableVideo');
+            const classList = enableVideoBtn.classList;
+            return classList.contains('enabled-video');
+        }
+
+        const showWinners = () => {
+            const groupedWinners = Array.from({ length: 5 }, () => []);
+
+            flippedCards.forEach((candidate) => {
+                const groupIndex = Math.floor((candidate.index - 1) / 20);
+                if (groupIndex < groupedWinners.length) {
+                    groupedWinners[groupIndex].push(candidate);
+                }
+            });
+
+            winnerListDiv.innerHTML = groupedWinners
+                .map((group, index) => {
+                    if (group.length > 0) {
+                        const indexAndName = group.map(c => `${c.index}(${c.name})`).join(', ');
+                        return `<p><strong>${index * 20 + 1}-${(index + 1) * 20}:</strong> ${indexAndName}</p>`;
+                    }
+                    return '';
+                })
+                .join('');
+
+            resultsModal.style.display = 'block';
+            overlay.style.display = 'block';
+        };
+
+        let randomTimerId;
+        let randomCardElement;
+        let randomCandidate;
+        // 随机抽奖
+        document.getElementById('randomButton').addEventListener('click', () => {
+            if(randomTimerId){
+                return;
+            }
+            const unFlippedCards = shuffledCandidates.filter(candidate => !flippedCards.includes(candidate));
+            if(unFlippedCards.length === 0){
+                return;
+            }
+            randomTimerId = setInterval(() => {
+                if(randomCardElement){
+                    randomCardElement.style.removeProperty('background-color');
+                }
+                const randomIndex = Math.floor(Math.random() * unFlippedCards.length);
+                randomCandidate = unFlippedCards[randomIndex];
+                randomCardElement = document.getElementById(`card${randomCandidate.index}`);
+                randomCardElement.style.backgroundColor = 'white';
+            }, 200);
+        })
+
+        document.getElementById('finishRandomButton').addEventListener('click', () => {
+            if(randomTimerId){
+                clearInterval(randomTimerId);
+                randomTimerId = null;
+            }
+            if(randomCardElement){
+                randomCardElement.click();
+                randomCardElement.style.removeProperty('background-color');
+                randomCardElement = null;
+            }
+            if(randomCandidate){
+                setTimeout(() => {
+                    showWinnerModal(randomCandidate);
+                    randomCandidate = null;
+                }, 300)
+            }
+        })
+
+        const showBoom = (candidate) => {
+            boomNumberDiv.innerHTML = `<p>你抽到了 <strong>${candidate.index} 号</strong> 退坑玩家【${candidate.name}】！</p>`;
+            boomModal.style.display = 'block';
+            overlay.style.display = 'block';
+        };
+
+        const closeModal = () => {
+            resultsModal.style.display = 'none';
+            boomModal.style.display = 'none';
+            overlay.style.display = 'none';
+        };
+
+        document.getElementById('endButton').addEventListener('click', showWinners);
+        document.getElementById('resetButton').addEventListener('click', () => {
+            resetState();
+            generateCards();
+        });
+        document.getElementById('closeModal').addEventListener('click', closeModal);
+        document.getElementById('boomCloseModal').addEventListener('click', () => {
+            closeModal();
+            resetState();
+            generateCards();
+        });
+
+        resetState();
+        generateCards();
+    </script>
+</body>
+</html>

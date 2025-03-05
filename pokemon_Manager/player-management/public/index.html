@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小精灵玩家管理</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: url('https://example.com/pokemon-background.jpg') no-repeat center center fixed;
+            background-size: cover;
+            color: #333;
+        }
+        .container {
+            width: 90%;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            font-size: 36px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        h2 {
+            color: #555;
+            font-size: 24px;
+            margin-top: 40px;
+            margin-bottom: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #fff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f8f8f8;
+        }
+        button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .input-group {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding-top: 60px;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 300px;
+            border-radius: 8px;
+        }
+        .modal-content h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .modal-content input, .modal-content select {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .tables-container {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+        .table-container {
+            width: 48%;
+            margin-bottom: 20px;
+        }
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .filters {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .scrollable-table {
+            max-height: 70vh;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .add-player-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 2;
+        }
+        .total-count {
+            text-align: right;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="add-player-button">
+        <button onclick="openModal()">新增玩家</button>
+    </div>
+    <div class="container">
+        <h1>小精灵玩家管理</h1>
+        
+        <div class="tables-container">
+            <div class="table-container">
+                <div class="table-header">
+                    <h2>全体玩家</h2>
+                    <button onclick="exportData('candidateArr')">导出玩家数据</button>
+                </div>
+                <div class="filters">
+                    <select id="professionFilter" onchange="applyFilters()">
+                        <option value="">所有职业</option>
+                        <option value="铁衣">铁衣</option>
+                        <option value="血河">血河</option>
+                        <option value="素问">素问</option>
+                        <option value="九灵">九灵</option>
+                        <option value="龙吟">龙吟</option>
+                        <option value="碎梦">碎梦</option>
+                        <option value="神相">神相</option>
+                        <option value="玄机">玄机</option>
+                        <option value="潮光">潮光</option>
+                    </select>
+                    <select id="afkFilter" onchange="applyFilters()">
+                        <option value="">所有状态</option>
+                        <option value="active">未退坑</option>
+                        <option value="afk">已退坑</option>
+                    </select>
+                </div>
+                <div class="scrollable-table">
+                    <table id="playerTable">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>姓名</th>
+                                <th>职业</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div class="total-count">
+                    总数: <span id="totalCount">0</span>
+                </div>
+            </div>
+            
+            <div class="table-container">
+                <div class="table-header">
+                    <h2>退坑玩家</h2>
+                    <button onclick="exportData('afkNumbers')">导出退坑玩家数据</button>
+                </div>
+                <div class="scrollable-table">
+                    <table id="afkTable">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>姓名</th>
+                                <th>职业</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>新增玩家</h2>
+            <input type="text" id="newPlayerName" placeholder="输入新玩家姓名">
+            <select id="newPlayerProfession">
+                <option value="铁衣">铁衣</option>
+                <option value="血河">血河</option>
+                <option value="素问">素问</option>
+                <option value="九灵">九灵</option>
+                <option value="龙吟">龙吟</option>
+                <option value="碎梦">碎梦</option>
+                <option value="神相">神相</option>
+                <option value="玄机">玄机</option>
+                <option value="潮光">潮光</option>
+            </select>
+            <input type="number" id="insertPosition" placeholder="插入位置 (1开始)" min="1">
+            <button onclick="addPlayer()">新增玩家</button>
+        </div>
+    </div>
+
+    <script>
+        let candidateArr = [];
+        let afkNumbers = [];
+
+        async function fetchData() {
+            const response = await fetch('/api/data');
+            const data = await response.json();
+            candidateArr = data.candidateArr;
+            afkNumbers = data.afkNumbers;
+            renderTables();
+        }
+
+        function renderTables() {
+            const playerTableBody = document.querySelector('#playerTable tbody');
+            const afkTableBody = document.querySelector('#afkTable tbody');
+            const professionFilter = document.getElementById('professionFilter').value;
+            const afkFilter = document.getElementById('afkFilter').value;
+
+            let filteredCandidates = candidateArr;
+            if (professionFilter) {
+                filteredCandidates = filteredCandidates.filter(player => player.profession === professionFilter);
+            }
+            if (afkFilter) {
+                if (afkFilter === 'active') {
+                    filteredCandidates = filteredCandidates.filter((_, index) => !afkNumbers.includes(index + 1));
+                } else if (afkFilter === 'afk') {
+                    filteredCandidates = filteredCandidates.filter((_, index) => afkNumbers.includes(index + 1));
+                }
+            }
+
+            playerTableBody.innerHTML = filteredCandidates.map((player, index) => `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td><input type="text" value="${player.name}" onchange="updatePlayer(${index}, 'name', this.value)"></td>
+                    <td>
+                        <select onchange="updatePlayer(${index}, 'profession', this.value)">
+                            <option value="铁衣" ${player.profession === '铁衣' ? 'selected' : ''}>铁衣</option>
+                            <option value="血河" ${player.profession === '血河' ? 'selected' : ''}>血河</option>
+                            <option value="素问" ${player.profession === '素问' ? 'selected' : ''}>素问</option>
+                            <option value="九灵" ${player.profession === '九灵' ? 'selected' : ''}>九灵</option>
+                            <option value="龙吟" ${player.profession === '龙吟' ? 'selected' : ''}>龙吟</option>
+                            <option value="碎梦" ${player.profession === '碎梦' ? 'selected' : ''}>碎梦</option>
+                            <option value="神相" ${player.profession === '神相' ? 'selected' : ''}>神相</option>
+                            <option value="玄机" ${player.profession === '玄机' ? 'selected' : ''}>玄机</option>
+                            <option value="潮光" ${player.profession === '潮光' ? 'selected' : ''}>潮光</option>
+                        </select>
+                    </td>
+                    <td>
+                        <button onclick="deletePlayer(${index})">删除</button>
+                        <label>
+                            <input type="checkbox" ${afkNumbers.includes(index + 1) ? 'checked' : ''} onchange="toggleAfk(${index})">
+                            退坑
+                        </label>
+                    </td>
+                </tr>
+            `).join('');
+
+            afkTableBody.innerHTML = afkNumbers.map(num => {
+                const player = candidateArr[num - 1];
+                return player ? `
+                    <tr>
+                        <td>${num}</td>
+                        <td>${player.name}</td>
+                        <td>${player.profession}</td>
+                    </tr>
+                ` : '';
+            }).join('');
+
+            document.getElementById('totalCount').innerText = filteredCandidates.length;
+        }
+
+        async function updatePlayer(index, key, value) {
+            candidateArr[index][key] = value;
+            await fetch(`/api/updatePlayer/${index}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(candidateArr[index])
+            });
+            renderTables();
+        }
+
+        async function deletePlayer(index) {
+            await fetch(`/api/deletePlayer/${index}`, {
+                method: 'DELETE'
+            });
+            candidateArr.splice(index, 1);
+            renderTables();
+        }
+
+        async function toggleAfk(index) {
+            await fetch(`/api/toggleAfk/${index}`, {
+                method: 'POST'
+            });
+            afkNumbers = await (await fetch('/api/data')).json().afkNumbers;
+            renderTables();
+        }
+
+        async function addPlayer() {
+            const newPlayerName = document.getElementById('newPlayerName').value.trim();
+            const newPlayerProfession = document.getElementById('newPlayerProfession').value;
+            const insertPosition = parseInt(document.getElementById('insertPosition').value, 10);
+            const maxPosition = candidateArr.length + 1;
+            if (newPlayerName && !isNaN(insertPosition) && insertPosition >= 1 && insertPosition <= maxPosition) {
+                const newPlayer = { name: newPlayerName, profession: newPlayerProfession };
+                await fetch('/api/addPlayer', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name: newPlayerName, profession: newPlayerProfession, position: insertPosition })
+                });
+                candidateArr.splice(insertPosition - 1, 0, newPlayer); // Adjust to 0-based index
+                closeModal();
+                renderTables();
+            } else {
+                alert(`请输入有效的玩家姓名和插入位置 (1-${maxPosition})`);
+            }
+        }
+
+        function openModal() {
+            document.getElementById('modal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
+
+        function exportData(type) {
+            let dataStr = '';
+            if (type === 'candidateArr') {
+                dataStr = JSON.stringify(candidateArr, null, 2);
+            } else if (type === 'afkNumbers') {
+                dataStr = JSON.stringify(afkNumbers, null, 2);
+            }
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${type}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function applyFilters() {
+            renderTables();
+        }
+
+        fetchData();
+    </script>
+</body>
+</html>
