@@ -389,5 +389,13 @@ const candidateArr = [
   {
     "name": "猫丞丞",
     "profession": "潮光"
+  },
+  {
+    "name": "绯村剑心",
+    "profession": "龙吟"
+  },
+  {
+    "name": "袅滋十米远",
+    "profession": "铁衣"
   }
 ]
